@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Stitcher — Merge & slice PDFs locally</title>
+  
+  <!-- Signal Fonts: Geist + Geist Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Third Party Dependencies (CDNs) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+
+  <style>
+    /* ==========================================================================
+       Signal Design System — Tokens
+       ========================================================================== */
+
+    /* 1. Colour: Ink on warm paper, one electric Signal green, optional ultramarine */
+    :root {
+      /* Neutrals — warm-leaning greys */
+      --neutral-0: #ffffff;
+      --neutral-50: #f5f5f2;
+      --neutral-100: #ebebe6;
+      --neutral-200: #d6d6cf;
+      --neutral-300: #b8b8b0;
+      --neutral-400: #8a8a83;
+      --neutral-500: #6b6b65;
+      --neutral-600: #55554f;
+      --neutral-700: #3a3a36;
+      --neutral-800: #22221f;
+      --neutral-900: #0e0e0c;
+
+      /* Signal green — primary highlight */
+      --green-100: #e6feef;
+      --green-200: #bffcd6;
+      --green-300: #86f7b0;
+      --green-400: #4cf08d;
+      --green-500: #1fe070;
+      --green-600: #12b85a;
+      --green-700: #0b8c45;
+      --green-800: #086534;
+      --green-900: #064325;
+
+      /* Ultramarine — optional second highlight, use rarely */
+      --blue-100: #ececff;
+      --blue-200: #d2d2ff;
+      --blue-300: #a9a9ff;
+      --blue-400: #7777ff;
+      --blue-500: #3d3dff;
+      --blue-600: #2a2ad6;
+      --blue-700: #1f1fa6;
+      --blue-800: #171778;
+      --blue-900: #10104d;
+
+      /* Status */
+      --red-500: #ff3b1f;
+      --red-100: #ffe6e1;
+      --red-800: #8f1a08;
+      --amber-500: #ffb000;
+      --amber-100: #fff3d6;
+      --amber-800: #6e4b00;
+
+      /* Semantic — light (default) */
+      --bg: var(--neutral-50);
+      --surface: var(--neutral-0);
+      --surface-2: var(--neutral-100);
+      --fg-1: var(--neutral-900);
+      --fg-2: var(--neutral-600);
+      --fg-3: var(--neutral-400);
+      --rule: var(--neutral-900);
+      --hairline: var(--neutral-200);
+      --accent: var(--green-500);
+      --accent-hover: var(--green-400);
+      --accent-press: var(--green-600);
+      --on-accent: var(--neutral-900);
+      --accent-text: var(--green-800);
+      --accent-tint: var(--green-100);
+      --accent-2: var(--blue-500);
+      --accent-2-text: var(--blue-500);
+      --accent-2-tint: var(--blue-100);
+      --on-accent-2: var(--neutral-0);
+      --danger: var(--red-500);
+      --danger-tint: var(--red-100);
+      --danger-text: var(--red-800);
+      --warning: var(--amber-500);
+      --warning-tint: var(--amber-100);
+      --warning-text: var(--amber-800);
+      --focus-ring: var(--blue-500);
+      --selection: var(--green-300);
+      --overlay: color-mix(in srgb, var(--neutral-900) 55%, transparent);
+
+      /* 2. Typography */
+      --font-sans: "Geist", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+      --font-display: var(--font-sans);
+      --font-body: var(--font-sans);
+
+      --weight-regular: 400;
+      --weight-medium: 500;
+      --weight-semibold: 600;
+      --weight-bold: 700;
+
+      --text-display-xl: 120px;
+      --text-display: 80px;
+      --text-h1: 56px;
+      --text-h2: 40px;
+      --text-h3: 28px;
+      --text-h4: 20px;
+      --text-lead: 20px;
+      --text-body: 16px;
+      --text-small: 14px;
+      --text-meta: 12px;
+      --text-micro: 11px;
+
+      --leading-tight: 0.95;
+      --leading-heading: 1.08;
+      --leading-body: 1.5;
+
+      --tracking-display: -0.045em;
+      --tracking-heading: -0.025em;
+      --tracking-body: -0.005em;
+      --tracking-label: 0.06em;
+
+      /* 3. Spacing, Grid & Edges (4px base; zero radius everywhere) */
+      --space-0: 0px;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 24px;
+      --space-6: 32px;
+      --space-7: 48px;
+      --space-8: 64px;
+      --space-9: 96px;
+      --space-10: 128px;
+
+      --grid-columns: 12;
+      --grid-gutter: 24px;
+      --grid-margin: 32px;
+      --grid-max: 1440px;
+
+      --radius: 0px;
+      --border-hairline: 1px;
+      --border-rule: 2px;
+      --border-heavy: 4px;
+
+      --control-sm: 32px;
+      --control-md: 40px;
+      --control-lg: 48px;
+
+      --shadow-none: none;
+      --shadow-offset: 6px 6px 0 var(--rule);
+
+      /* 4. Motion */
+      --ease: cubic-bezier(0.2, 0, 0, 1);
+      --ease-in: cubic-bezier(0.4, 0, 1, 1);
+      --duration-fast: 100ms;
+      --duration: 180ms;
+      --duration-slow: 320ms;
+    }
+
+    /* Dark theme — ink ground; green stays full-strength */
+    [data-theme="dark"] {
+      --bg: var(--neutral-900);
+      --surface: var(--neutral-800);
+      --surface-2: var(--neutral-700);
+      --fg-1: var(--neutral-50);
+      --fg-2: var(--neutral-300);
+      --fg-3: var(--neutral-500);
+      --rule: var(--neutral-50);
+      --hairline: var(--neutral-700);
+      --accent: var(--green-500);
+      --accent-hover: var(--green-400);
+      --accent-press: var(--green-300);
+      --on-accent: var(--neutral-900);
+      --accent-text: var(--green-400);
+      --accent-tint: color-mix(in srgb, var(--green-500) 16%, transparent);
+      --accent-2: var(--blue-400);
+      --accent-2-text: var(--blue-300);
+      --accent-2-tint: color-mix(in srgb, var(--blue-500) 22%, transparent);
+      --danger-tint: color-mix(in srgb, var(--red-500) 20%, transparent);
+      --danger-text: #ff8a75;
+      --warning-tint: color-mix(in srgb, var(--amber-500) 18%, transparent);
+      --warning-text: var(--amber-500);
+      --focus-ring: var(--green-400);
+      --selection: color-mix(in srgb, var(--green-500) 40%, transparent);
+      --overlay: color-mix(in srgb, #000 70%, transparent);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      :root {
+        --duration-fast: 0ms;
+        --duration: 0ms;
+        --duration-slow: 0ms;
+      }
+    }
+
+    /* ==========================================================================
+       Signal Design System — Base & Reset
+       ========================================================================== */
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg-1);
+      font-family: var(--font-body);
+      font-size: var(--text-body);
+      line-height: var(--leading-body);
+      letter-spacing: var(--tracking-body);
+      font-feature-settings: "ss01", "tnum" 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-weight: var(--weight-semibold);
+      line-height: var(--leading-heading);
+      letter-spacing: var(--tracking-heading);
+      text-wrap: balance;
+    }
+    h1 { font-size: var(--text-h1); letter-spacing: -0.035em; }
+    h2 { font-size: var(--text-h2); }
+    h3 { font-size: var(--text-h3); }
+    h4 { font-size: var(--text-h4); letter-spacing: -0.015em; }
+    p { margin: 0; text-wrap: pretty; }
+    a {
+      color: inherit;
+      text-decoration: underline;
+      text-decoration-color: var(--accent);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 4px;
+      transition: background var(--duration-fast) var(--ease);
+    }
+    a:hover {
+      background: var(--accent);
+      color: var(--on-accent);
+      text-decoration-color: transparent;
+    }
+    img { display: block; max-width: 100%; }
+    code, kbd, pre { font-family: var(--font-mono); font-size: 0.92em; }
+    hr { border: 0; height: var(--border-rule); background: var(--rule); margin: 0; }
+    :focus { outline: none; }
+    :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+    ::selection { background: var(--selection); color: var(--neutral-900); }
+
+    /* ==========================================================================
+       Signal Design System — Component Class Layer (.sg-*)
+       ========================================================================== */
+    .sg-label {
+      font-family: var(--font-mono);
+      font-size: var(--text-meta);
+      font-weight: var(--weight-medium);
+      letter-spacing: var(--tracking-label);
+      text-transform: uppercase;
+      color: var(--fg-2);
+    }
+    .sg-index {
+      font-family: var(--font-mono);
+      font-size: var(--text-meta);
+      color: var(--fg-1);
+      font-variant-numeric: tabular-nums;
+    }
+    .sg-display {
+      font-size: clamp(44px, 6vw, var(--text-display));
+      line-height: var(--leading-tight);
+      letter-spacing: var(--tracking-display);
+      font-weight: var(--weight-semibold);
+    }
+    .sg-lead {
+      font-size: var(--text-lead);
+      line-height: 1.4;
+      color: var(--fg-2);
+      letter-spacing: -0.01em;
+    }
+    .sg-muted { color: var(--fg-2); }
+    .sg-mark {
+      display: inline-block;
+      line-height: 0.95;
+      background: var(--accent);
+      color: var(--on-accent);
+      padding: 0 0.08em;
+    }
+    .sg-rule { border: 0; height: var(--border-rule); background: var(--rule); }
+    .sg-hairline { border: 0; height: 1px; background: var(--hairline); }
+
+    /* Buttons — labels flush left, zero radius */
+    .sg-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: var(--space-2);
+      height: var(--control-md);
+      padding: 0 var(--space-4);
+      font: var(--weight-medium) var(--text-small)/1 var(--font-sans);
+      letter-spacing: -0.005em;
+      color: var(--fg-1);
+      background: transparent;
+      border: var(--border-rule) solid transparent;
+      border-radius: 0;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease);
+    }
+    .sg-btn svg { flex: none; }
+    .sg-btn__label { flex: 1; text-align: left; }
+    .sg-btn--primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+    .sg-btn--primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .sg-btn--primary:active:not(:disabled) { background: var(--accent-press); border-color: var(--accent-press); }
+    .sg-btn--ink { background: var(--fg-1); color: var(--bg); border-color: var(--fg-1); }
+    .sg-btn--ink:hover:not(:disabled) { background: var(--neutral-700); border-color: var(--neutral-700); }
+    .sg-btn--ink:active:not(:disabled) { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+    .sg-btn--secondary { border-color: var(--fg-1); background: transparent; }
+    .sg-btn--secondary:hover:not(:disabled) { background: var(--fg-1); color: var(--bg); }
+    .sg-btn--secondary:active:not(:disabled) { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+    .sg-btn--ghost { padding: 0 var(--space-2); }
+    .sg-btn--ghost:hover:not(:disabled) { background: var(--surface-2); }
+    .sg-btn--ghost:active:not(:disabled) { background: var(--accent-tint); }
+    .sg-btn--danger-ghost:hover:not(:disabled) { background: var(--danger-tint); color: var(--danger-text); }
+    .sg-btn--sm { height: var(--control-sm); padding: 0 var(--space-3); font-size: var(--text-meta); }
+    .sg-btn--lg { height: var(--control-lg); padding: 0 var(--space-5); font-size: var(--text-body); }
+    .sg-btn--block { display: flex; width: 100%; }
+    .sg-btn--icon { width: var(--control-md); padding: 0; justify-content: center; }
+    .sg-btn--icon.sg-btn--sm { width: var(--control-sm); }
+    .sg-btn--icon.sg-btn--lg { width: var(--control-lg); }
+    .sg-btn:disabled, .sg-btn[aria-disabled="true"] { opacity: 0.4; pointer-events: none; cursor: not-allowed; }
+
+    /* Tags */
+    .sg-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 22px;
+      padding: 0 8px;
+      font: var(--weight-medium) var(--text-micro)/1 var(--font-mono);
+      letter-spacing: var(--tracking-label);
+      text-transform: uppercase;
+      border: 1px solid var(--fg-1);
+      color: var(--fg-1);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .sg-tag--accent { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+    .sg-tag--blue { background: var(--accent-2); border-color: var(--accent-2); color: var(--on-accent-2); }
+    .sg-tag--solid { background: var(--fg-1); color: var(--bg); }
+    .sg-tag--muted { border-color: var(--hairline); color: var(--fg-2); }
+    .sg-tag--danger { background: var(--danger-tint); border-color: var(--danger-tint); color: var(--danger-text); }
+    .sg-tag__dot { width: 6px; height: 6px; background: currentColor; }
+
+    /* Forms */
+    .sg-field { display: flex; flex-direction: column; gap: 6px; }
+    .sg-field__hint { font-size: var(--text-meta); color: var(--fg-2); }
+    .sg-input {
+      width: 100%;
+      height: var(--control-md);
+      padding: 0 var(--space-3);
+      font: var(--weight-regular) var(--text-small)/1 var(--font-sans);
+      color: var(--fg-1);
+      background: var(--surface);
+      border: 0;
+      border-bottom: var(--border-rule) solid var(--fg-1);
+      border-radius: 0;
+      caret-color: var(--accent-press);
+      transition: background var(--duration-fast) var(--ease);
+    }
+    .sg-input--mono {
+      font-family: var(--font-mono);
+      font-size: var(--text-meta);
+    }
+    .sg-input--sm {
+      height: var(--control-sm);
+      padding: 0 var(--space-2);
+    }
+    .sg-input::placeholder { color: var(--fg-3); }
+    .sg-input:hover { background: var(--surface-2); }
+    .sg-input:focus-visible {
+      outline: none;
+      border-bottom-color: var(--accent);
+      box-shadow: inset 0 -2px 0 var(--accent);
+    }
+
+    /* Card — ruled top, no shadow, no radius */
+    .sg-card {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      padding: var(--space-4) 0 0;
+      border-top: var(--border-rule) solid var(--rule);
+      color: inherit;
+      text-decoration: none;
+    }
+    .sg-card--boxed {
+      padding: var(--space-5);
+      border: 1px solid var(--hairline);
+      border-top: var(--border-rule) solid var(--rule);
+      background: var(--surface);
+    }
+    .sg-card__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: var(--space-3);
+    }
+    .sg-card__title {
+      font-size: var(--text-h3);
+      font-weight: var(--weight-semibold);
+      letter-spacing: -0.025em;
+      line-height: 1.1;
+    }
+    .sg-card__body {
+      font-size: var(--text-small);
+      color: var(--fg-2);
+      line-height: 1.5;
+    }
+
+    /* Section Header — index number / title / meta */
+    .sg-section {
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr) auto;
+      gap: var(--space-3);
+      align-items: baseline;
+      padding-bottom: var(--space-3);
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    /* Nav */
+    .sg-nav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      height: 56px;
+      padding: 0 var(--grid-margin);
+      border-bottom: var(--border-rule) solid var(--rule);
+      background: var(--bg);
+    }
+    .sg-nav__brand {
+      font-weight: var(--weight-bold);
+      font-size: var(--text-body);
+      letter-spacing: -0.02em;
+      margin-right: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .sg-nav__brand:hover { background: none; color: inherit; }
+    .sg-brand-mark {
+      width: 12px;
+      height: 12px;
+      background: var(--accent);
+      display: inline-block;
+      flex: none;
+    }
+
+    /* Grid & Container */
+    .sg-grid {
+      display: grid;
+      grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+      gap: var(--grid-gutter);
+    }
+    .sg-container {
+      width: 100%;
+      max-width: var(--grid-max);
+      margin: 0 auto;
+      padding: 0 var(--grid-margin);
+    }
+
+    /* Imagery — black & white per Signal guidelines */
+    .grayscale { filter: grayscale(1) contrast(1.05); }
+
+    /* ==========================================================================
+       App-Specific Layout & Components (Signal System)
+       ========================================================================== */
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--neutral-300); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--fg-1); }
+
+    .hero-section {
+      padding-top: var(--space-7);
+      padding-bottom: var(--space-7);
+      align-items: end;
+    }
+
+    .hero-meta {
+      grid-column: 1 / 4;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .hero-copy {
+      grid-column: 4 / 13;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    .workspace-grid {
+      padding-bottom: var(--space-9);
+      align-items: start;
+    }
+
+    .col-queue {
+      grid-column: 1 / 9;
+    }
+
+    .col-controls {
+      grid-column: 9 / 13;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6);
+      position: sticky;
+      top: 80px;
+    }
+
+    @media (max-width: 968px) {
+      :root { --grid-margin: 20px; }
+      .hero-meta { grid-column: 1 / -1; flex-direction: row; align-items: baseline; gap: var(--space-3); }
+      .hero-copy { grid-column: 1 / -1; }
+      .col-queue { grid-column: 1 / -1; }
+      .col-controls { grid-column: 1 / -1; position: static; }
+    }
+
+    /* Dropzone — Swiss structural box, flush-left */
+    .dropzone {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid var(--fg-1);
+      border-left: var(--border-heavy) solid var(--fg-1);
+      padding: var(--space-5);
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-5);
+      transition: background var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease);
+    }
+
+    .dropzone:hover,
+    .dropzone.dragover {
+      background: var(--surface-2);
+      border-left-color: var(--accent);
+    }
+
+    .dropzone-main {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .dropzone-title {
+      font-size: var(--text-h4);
+      font-weight: var(--weight-semibold);
+      letter-spacing: -0.015em;
+      color: var(--fg-1);
+    }
+
+    .dropzone-action {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      height: var(--control-sm);
+      padding: 0 var(--space-3);
+      border: var(--border-rule) solid var(--fg-1);
+      font: var(--weight-medium) var(--text-meta)/1 var(--font-sans);
+      background: var(--bg);
+      color: var(--fg-1);
+      white-space: nowrap;
+      flex-shrink: 0;
+      align-self: center;
+      transition: background var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+    }
+
+    .dropzone:hover .dropzone-action,
+    .dropzone.dragover .dropzone-action {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--on-accent);
+    }
+
+    /* Queue Header Bar */
+    .files-list-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: var(--space-2) 0;
+      border-bottom: var(--border-rule) solid var(--rule);
+    }
+
+    .files-list {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* File Item Row — 1px hairline between rows, 4px left active bar on hover/drag */
+    .file-item {
+      display: grid;
+      grid-template-columns: auto 28px 52px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: var(--space-4);
+      padding: var(--space-4) var(--space-3);
+      background: var(--surface);
+      border-bottom: 1px solid var(--hairline);
+      border-left: var(--border-heavy) solid transparent;
+      transition: background var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease);
+    }
+
+    .file-item:hover {
+      background: var(--surface-2);
+      border-left-color: var(--fg-1);
+    }
+
+    .file-item.dragging {
+      opacity: 0.6;
+      background: var(--accent-tint);
+      border-left-color: var(--accent);
+    }
+
+    @media (max-width: 640px) {
+      .file-item {
+        grid-template-columns: auto 44px minmax(0, 1fr) auto;
+        gap: var(--space-3);
+      }
+      .file-index-col { display: none; }
+      .dropzone { flex-direction: column; align-items: flex-start; }
+      .dropzone-action { align-self: flex-start; }
+    }
+
+    /* Drag Handle */
+    .drag-handle {
+      cursor: grab;
+      color: var(--fg-3);
+      padding: var(--space-1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color var(--duration-fast) var(--ease);
+    }
+    .drag-handle:hover { color: var(--fg-1); }
+    .drag-handle:active { cursor: grabbing; color: var(--accent-text); }
+
+    /* Preview Thumbnail — zero radius, 1px hairline border, B&W filter */
+    .file-preview-wrapper {
+      width: 52px;
+      height: 68px;
+      background: var(--bg);
+      border: 1px solid var(--fg-1);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .file-preview-canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .file-preview-placeholder {
+      color: var(--fg-3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Document Metadata */
+    .file-details {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .file-title-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+
+    .file-name {
+      font-size: var(--text-body);
+      font-weight: var(--weight-semibold);
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--fg-1);
+      max-width: 100%;
+    }
+
+    .file-meta-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+
+    /* Page Range Extraction Input */
+    .page-range-container {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .page-range-input {
+      width: 132px;
+    }
+
+    /* File Actions */
+    .file-actions {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    /* Empty State — flush left */
+    .empty-state {
+      padding: var(--space-7) var(--space-5);
+      background: var(--surface);
+      border-bottom: 1px solid var(--hairline);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-2);
+    }
+
+    /* Summary Dashboard — Swiss metric cells */
+    .summary-dashboard {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--hairline);
+      border-bottom: var(--border-rule) solid var(--rule);
+      background: var(--surface);
+    }
+
+    .summary-item {
+      padding: var(--space-3) var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+      border-right: 1px solid var(--hairline);
+    }
+
+    .summary-item:last-child {
+      border-right: 0;
+    }
+
+    .summary-val {
+      font-size: var(--text-h3);
+      font-weight: var(--weight-semibold);
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      color: var(--fg-1);
+    }
+
+    /* Dialog / Progress Overlay (Signal .sg-backdrop + .sg-dialog) */
+    .sg-backdrop {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: var(--space-5);
+      background: var(--overlay);
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--duration) var(--ease);
+    }
+
+    .sg-backdrop.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .sg-dialog {
+      width: min(480px, 100%);
+      background: var(--surface);
+      border: var(--border-rule) solid var(--rule);
+      box-shadow: var(--shadow-offset);
+      display: flex;
+      flex-direction: column;
+      transform: translateY(8px);
+      transition: transform var(--duration) var(--ease);
+    }
+
+    .sg-backdrop.active .sg-dialog {
+      transform: translateY(0);
+    }
+
+    .sg-dialog__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--space-3) var(--space-4) var(--space-3) var(--space-5);
+      border-bottom: var(--border-rule) solid var(--rule);
+    }
+
+    .sg-dialog__title {
+      font-size: var(--text-h4);
+      font-weight: var(--weight-semibold);
+      letter-spacing: -0.015em;
+    }
+
+    .sg-dialog__body {
+      padding: var(--space-5);
+      font-size: var(--text-small);
+      color: var(--fg-2);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    .sg-dialog__actions {
+      display: flex;
+      gap: var(--space-2);
+      padding: 0 var(--space-5) var(--space-5);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--fg-1);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width var(--duration) var(--ease);
+    }
+
+    .modal-loading-icon {
+      color: var(--fg-1);
+      animation: spin 1.2s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Toast — fixed bottom-left per Signal guidelines */
+    .sg-toast {
+      position: fixed;
+      bottom: var(--space-5);
+      left: var(--grid-margin);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      min-width: 300px;
+      max-width: 440px;
+      padding: var(--space-3) var(--space-4);
+      background: var(--neutral-900);
+      color: var(--neutral-50);
+      font-size: var(--text-small);
+      border-left: 6px solid var(--danger);
+      box-shadow: var(--shadow-offset);
+      z-index: 200;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: opacity var(--duration) var(--ease), transform var(--duration) var(--ease);
+      pointer-events: none;
+    }
+
+    .sg-toast.active {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: all;
+    }
+
+    .sg-toast__msg { flex: 1; }
+
+    /* Footer */
+    .site-footer {
+      margin-top: auto;
+      border-top: var(--border-rule) solid var(--rule);
+      padding: var(--space-5) 0;
+    }
+
+    .site-footer__inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Signal Sticky Top Bar -->
+  <nav class="sg-nav">
+    <a href="#" class="sg-nav__brand">
+      <span class="sg-brand-mark" aria-hidden="true"></span>
+      PDF Stitcher
+    </a>
+    <span class="sg-tag sg-tag--accent"><span class="sg-tag__dot"></span>Local sandbox</span>
+    <span class="sg-tag">PDF-Lib 1.17</span>
+    <button type="button" id="theme-toggle" class="sg-btn sg-btn--ghost sg-btn--icon sg-btn--sm" aria-label="Toggle dark mode" title="Toggle theme">
+      <i data-lucide="moon" style="width: 16px; height: 16px;"></i>
+    </button>
+  </nav>
+
+  <main class="sg-container">
+    
+    <!-- Swiss 3 + 9 Hero Header -->
+    <header class="sg-grid hero-section">
+      <div class="hero-meta">
+        <span class="sg-index" style="font-size: 28px;">01</span>
+        <span class="sg-label">Document utility</span>
+      </div>
+      <div class="hero-copy">
+        <h1 class="sg-display">Stitch PDFs <span class="sg-mark">locally</span>.</h1>
+        <p class="sg-lead" style="max-width: 580px;">I built this to merge, slice, and reorder PDF files in the browser without uploading private documents to a remote server.</p>
+      </div>
+    </header>
+
+    <!-- Main 8 + 4 Workspace Grid -->
+    <div class="sg-grid workspace-grid">
+      
+      <!-- Left Column: Document Queue -->
+      <section class="sg-card col-queue" aria-labelledby="section-queue-title">
+        <div class="sg-section">
+          <span class="sg-index">01</span>
+          <h2 id="section-queue-title" class="sg-card__title">Document queue</h2>
+          <span class="sg-label">Drag rows to reorder</span>
+        </div>
+        
+        <!-- Drag & Drop Upload Zone -->
+        <div id="dropzone" class="dropzone" role="button" tabindex="0" aria-label="Upload PDF files">
+          <input type="file" id="file-input" multiple accept=".pdf" style="display: none;">
+          <div class="dropzone-main">
+            <span class="sg-label">Input · PDF format</span>
+            <h3 class="dropzone-title">Drop PDF files here to queue them.</h3>
+            <p class="sg-card__body">Select multiple files at once, then pick exact page ranges for each document below.</p>
+          </div>
+          <span class="dropzone-action">
+            <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+            Add files
+          </span>
+        </div>
+
+        <!-- Files List Container -->
+        <div>
+          <div class="files-list-header">
+            <span id="files-count-label" class="sg-label">0 documents added</span>
+            <span id="total-size-label" class="sg-index">0 Bytes</span>
+          </div>
+          
+          <div id="files-list" class="files-list">
+            <!-- Empty State Placeholder -->
+            <div id="empty-state" class="empty-state">
+              <span class="sg-label">Queue empty</span>
+              <p class="sg-card__body">No PDFs loaded yet. Drop files above or use "Add files" to begin.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Output Settings & Summary -->
+      <aside class="col-controls">
+        
+        <!-- Output Settings Card -->
+        <div class="sg-card" aria-labelledby="section-output-title">
+          <div class="sg-section">
+            <span class="sg-index">02</span>
+            <h2 id="section-output-title" class="sg-card__title">Output</h2>
+            <span class="sg-tag">Export</span>
+          </div>
+          
+          <!-- Summary Dashboard -->
+          <div class="summary-dashboard">
+            <div class="summary-item">
+              <span class="sg-label">Files</span>
+              <span id="dashboard-count" class="summary-val">0</span>
+            </div>
+            <div class="summary-item">
+              <span class="sg-label">Pages</span>
+              <span id="dashboard-pages" class="summary-val">0</span>
+            </div>
+            <div class="summary-item">
+              <span class="sg-label">Size</span>
+              <span id="dashboard-size" class="summary-val">0 KB</span>
+            </div>
+          </div>
+
+          <!-- Output Filename -->
+          <div class="sg-field" style="margin-top: var(--space-2);">
+            <label for="output-filename" class="sg-label">Output filename</label>
+            <input type="text" id="output-filename" class="sg-input sg-input--mono" value="stitched_document.pdf" placeholder="document.pdf">
+            <span class="sg-field__hint">Ranges accept "all", "1-3", "5", or "2, 4-6".</span>
+          </div>
+
+          <!-- Action Buttons (Verb first, flush-left labels) -->
+          <div style="display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2);">
+            <button id="btn-stitch" class="sg-btn sg-btn--primary sg-btn--lg sg-btn--block" disabled>
+              <span class="sg-btn__label">Merge PDFs</span>
+              <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+            </button>
+            <button id="btn-clear" class="sg-btn sg-btn--secondary sg-btn--block" disabled>
+              <span class="sg-btn__label">Clear queue</span>
+              <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Privacy & Architecture Boxed Card -->
+        <div class="sg-card sg-card--boxed">
+          <div class="sg-card__head">
+            <span class="sg-label">03 — Zero telemetry</span>
+            <i data-lucide="terminal" style="width: 16px; height: 16px;"></i>
+          </div>
+          <p class="sg-card__body">Everything runs inside your browser tab via PDF.js and PDF-Lib. Bytes are read and compiled in local memory and never transmitted over the network.</p>
+        </div>
+
+      </aside>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="sg-container site-footer__inner">
+      <span class="sg-label">PDF Stitcher · Client-side PDF engine</span>
+      <span class="sg-index">Signal Design System</span>
+    </div>
+  </footer>
+
+  <!-- Progress Overlay Dialog -->
+  <div id="progress-modal" class="sg-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="sg-dialog">
+      <div class="sg-dialog__head">
+        <h3 id="modal-title" class="sg-dialog__title">Merging PDFs</h3>
+        <div id="modal-icon-container">
+          <i data-lucide="loader-2" class="modal-loading-icon" style="width: 20px; height: 20px;"></i>
+        </div>
+      </div>
+      <div class="sg-dialog__body">
+        <p id="modal-status">Processing documents...</p>
+        <div class="progress-track">
+          <div id="modal-progress" class="progress-bar"></div>
+        </div>
+      </div>
+      <div class="sg-dialog__actions">
+        <button id="modal-close" class="sg-btn sg-btn--secondary" style="display: none;">
+          <span class="sg-btn__label">Close</span>
+          <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification (Bottom-left per Signal guidelines) -->
+  <div id="toast" class="sg-toast" role="status" aria-live="polite">
+    <span id="toast-message" class="sg-toast__msg">An error occurred</span>
+  </div>
+
+  <script>
+    // Configure PDF.js Global Worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    // Application State
+    let files = []; // Array of file objects: { id, name, size, pageCount, arrayBuffer, thumbnailUrl, range: 'all' }
+
+    // DOM Elements
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const filesList = document.getElementById('files-list');
+    const emptyState = document.getElementById('empty-state');
+    const btnStitch = document.getElementById('btn-stitch');
+    const btnClear = document.getElementById('btn-clear');
+    const filesCountLabel = document.getElementById('files-count-label');
+    const totalSizeLabel = document.getElementById('total-size-label');
+    const outputFilename = document.getElementById('output-filename');
+    const themeToggle = document.getElementById('theme-toggle');
+    
+    // Dashboard elements
+    const dbCount = document.getElementById('dashboard-count');
+    const dbPages = document.getElementById('dashboard-pages');
+    const dbSize = document.getElementById('dashboard-size');
+
+    // Modal elements
+    const progressModal = document.getElementById('progress-modal');
+    const modalIconContainer = document.getElementById('modal-icon-container');
+    const modalTitle = document.getElementById('modal-title');
+    const modalStatus = document.getElementById('modal-status');
+    const modalProgress = document.getElementById('modal-progress');
+    const modalClose = document.getElementById('modal-close');
+
+    // Helper: Hydrate Lucide Icons with Signal 2px stroke standard
+    function refreshIcons() {
+      lucide.createIcons({ attrs: { 'stroke-width': 2 } });
+    }
+
+    refreshIcons();
+
+    // Theme Toggle (Light / Dark via data-theme="dark")
+    themeToggle.addEventListener('click', () => {
+      const root = document.documentElement;
+      const isDark = root.getAttribute('data-theme') === 'dark';
+      if (isDark) {
+        root.removeAttribute('data-theme');
+        themeToggle.innerHTML = '<i data-lucide="moon" style="width: 16px; height: 16px;"></i>';
+      } else {
+        root.setAttribute('data-theme', 'dark');
+        themeToggle.innerHTML = '<i data-lucide="sun" style="width: 16px; height: 16px;"></i>';
+      }
+      refreshIcons();
+    });
+
+    // Helper: Generate Unique ID
+    function generateId() {
+      return 'pdf_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // Helper: Format Two-Digit Signal Index (01, 02...)
+    function formatIndex(num) {
+      return String(num).padStart(2, '0');
+    }
+
+    // Helper: Format File Sizes
+    function formatBytes(bytes, decimals = 1) {
+      if (bytes === 0) return '0 KB';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    // Trigger File Input Click & Keyboard Activation
+    dropzone.addEventListener('click', () => fileInput.click());
+    dropzone.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        fileInput.click();
+      }
+    });
+
+    // File Input Change
+    fileInput.addEventListener('change', (e) => {
+      handleFiles(e.target.files);
+      fileInput.value = ''; // Reset input so same file can be loaded again
+    });
+
+    // Drag & Drop Listeners
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => {
+      dropzone.classList.remove('dragover');
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      handleFiles(e.dataTransfer.files);
+    });
+
+    // Handle Uploaded Files
+    async function handleFiles(fileList) {
+      const pdfFiles = Array.from(fileList).filter(file => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
+      
+      if (pdfFiles.length === 0) {
+        showToast('Please select valid PDF documents.');
+        return;
+      }
+
+      // Check cumulative size
+      let totalSize = files.reduce((acc, f) => acc + f.size, 0) + pdfFiles.reduce((acc, f) => acc + f.size, 0);
+      if (totalSize > 100 * 1024 * 1024) {
+        showToast('Total loaded files exceed 100 MB. Processing may be slower.');
+      }
+
+      for (let file of pdfFiles) {
+        const fileId = generateId();
+        
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          
+          // Render visual thumbnail & count pages with PDF.js
+          const result = await processPdfMetadata(arrayBuffer);
+          
+          const fileObj = {
+            id: fileId,
+            name: file.name,
+            size: file.size,
+            pageCount: result.pageCount,
+            arrayBuffer: arrayBuffer,
+            thumbnailUrl: result.thumbnailUrl,
+            range: 'all'
+          };
+          
+          files.push(fileObj);
+        } catch (error) {
+          console.error('Error processing PDF:', error);
+          showToast(`Failed to parse "${file.name}": encrypted or corrupted.`);
+        }
+      }
+
+      renderFilesList();
+      updateDashboard();
+    }
+
+    // PDF Metadata Extraction (Pages & Thumbnail)
+    async function processPdfMetadata(arrayBuffer) {
+      try {
+        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer.slice(0)) }).promise;
+        const pageCount = pdf.numPages;
+        let thumbnailUrl = null;
+
+        // Render first page to thumbnail
+        try {
+          const page = await pdf.getPage(1);
+          const originalViewport = page.getViewport({ scale: 1.0 });
+          
+          // Compute scale for width of 104px (2x crispness)
+          const scale = 104 / originalViewport.width;
+          const viewport = page.getViewport({ scale: scale });
+          
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          
+          await page.render({
+            canvasContext: ctx,
+            viewport: viewport
+          }).promise;
+          
+          thumbnailUrl = canvas.toDataURL('image/jpeg', 0.85);
+        } catch (renderError) {
+          console.warn('Could not render thumbnail:', renderError);
+        }
+
+        return { pageCount, thumbnailUrl };
+      } catch (e) {
+        throw e;
+      }
+    }
+
+    // Remove File from Workspace
+    function deleteFile(fileId) {
+      files = files.filter(f => f.id !== fileId);
+      renderFilesList();
+      updateDashboard();
+    }
+
+    // Reorder manually (Chevrons)
+    function moveFile(index, direction) {
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= files.length) return;
+      
+      // Swap positions in files array
+      const temp = files[index];
+      files[index] = files[targetIndex];
+      files[targetIndex] = temp;
+      
+      renderFilesList();
+      updateDashboard();
+    }
+
+    // Update File Range setting
+    function updateFileRange(fileId, rangeVal) {
+      const file = files.find(f => f.id === fileId);
+      if (file) {
+        file.range = rangeVal;
+        updateDashboard();
+      }
+    }
+
+    // Drag and Drop State variables
+    let draggedIndex = null;
+
+    // Render Files List UI
+    function renderFilesList() {
+      // Clear current list children except empty state
+      const items = Array.from(filesList.children);
+      items.forEach(child => {
+        if (child.id !== 'empty-state') {
+          filesList.removeChild(child);
+        }
+      });
+
+      if (files.length === 0) {
+        emptyState.style.display = 'flex';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+
+      files.forEach((file, index) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.dataset.id = file.id;
+        item.draggable = true;
+
+        // HTML5 drag listeners
+        item.addEventListener('dragstart', (e) => {
+          draggedIndex = index;
+          item.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+
+        item.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (draggedIndex === null || draggedIndex === index) return;
+
+          const draggingItem = filesList.querySelector('.file-item.dragging');
+          const bounding = item.getBoundingClientRect();
+          const offset = e.clientY - bounding.top - bounding.height / 2;
+
+          if (offset > 0) {
+            item.after(draggingItem);
+          } else {
+            item.before(draggingItem);
+          }
+        });
+
+        item.addEventListener('drop', (e) => {
+          e.preventDefault();
+          if (draggedIndex === null) return;
+
+          // Synchronize order based on DOM children sequence
+          const children = Array.from(filesList.children).filter(c => c.id !== 'empty-state');
+          const newFilesOrder = [];
+          
+          children.forEach(child => {
+            const fid = child.dataset.id;
+            const fObj = files.find(f => f.id === fid);
+            if (fObj) newFilesOrder.push(fObj);
+          });
+
+          files = newFilesOrder;
+          draggedIndex = null;
+          renderFilesList();
+          updateDashboard();
+        });
+
+        item.addEventListener('dragend', () => {
+          item.classList.remove('dragging');
+          draggedIndex = null;
+        });
+
+        // Construct Inner Content (B&W grayscale thumbnail per Signal guidelines)
+        const hasThumbnail = !!file.thumbnailUrl;
+        const previewHtml = hasThumbnail 
+          ? `<img src="${file.thumbnailUrl}" class="file-preview-canvas grayscale" alt="Page 1 preview of ${file.name}">`
+          : `<i data-lucide="file-text" class="file-preview-placeholder" style="width: 20px; height: 20px;"></i>`;
+
+        item.innerHTML = `
+          <!-- Drag Handle -->
+          <div class="drag-handle" title="Drag to reorder">
+            <i data-lucide="grip-vertical" style="width: 16px; height: 16px;"></i>
+          </div>
+
+          <!-- Signal Mono Index -->
+          <span class="sg-index file-index-col">${formatIndex(index + 1)}</span>
+
+          <!-- Thumbnail -->
+          <div class="file-preview-wrapper">
+            ${previewHtml}
+          </div>
+
+          <!-- Details -->
+          <div class="file-details">
+            <div class="file-title-row">
+              <div class="file-name" title="${file.name}">${file.name}</div>
+            </div>
+            <div class="file-meta-row">
+              <span class="sg-tag sg-tag--muted">${formatBytes(file.size)}</span>
+              <span class="sg-tag sg-tag--accent">${file.pageCount} ${file.pageCount === 1 ? 'page' : 'pages'}</span>
+              <div class="page-range-container">
+                <span class="sg-label">Pages</span>
+                <input type="text" 
+                       class="sg-input sg-input--mono sg-input--sm page-range-input" 
+                       placeholder="all, 1-3, 5" 
+                       value="${file.range}"
+                       aria-label="Page range for ${file.name}"
+                       oninput="updateFileRange('${file.id}', this.value)"
+                       title="Select specific pages: 'all', '1-5', '1, 3, 5', or '5-'.">
+              </div>
+            </div>
+          </div>
+
+          <!-- Manual Reorder and Delete Controls (Icon-only buttons with aria-label) -->
+          <div class="file-actions">
+            <button type="button" class="sg-btn sg-btn--ghost sg-btn--icon sg-btn--sm" onclick="moveFile(${index}, -1)" ${index === 0 ? 'disabled' : ''} aria-label="Move document up" title="Move up">
+              <i data-lucide="arrow-up" style="width: 16px; height: 16px;"></i>
+            </button>
+            <button type="button" class="sg-btn sg-btn--ghost sg-btn--icon sg-btn--sm" onclick="moveFile(${index}, 1)" ${index === files.length - 1 ? 'disabled' : ''} aria-label="Move document down" title="Move down">
+              <i data-lucide="arrow-down" style="width: 16px; height: 16px;"></i>
+            </button>
+            <button type="button" class="sg-btn sg-btn--ghost sg-btn--danger-ghost sg-btn--icon sg-btn--sm" onclick="deleteFile('${file.id}')" aria-label="Remove document" title="Remove">
+              <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+            </button>
+          </div>
+        `;
+
+        filesList.appendChild(item);
+      });
+
+      refreshIcons();
+    }
+
+    // Update Dashboard Info & Buttons State
+    function updateDashboard() {
+      const filesCount = files.length;
+      let totalPages = 0;
+      let totalSizeBytes = 0;
+
+      files.forEach(file => {
+        totalSizeBytes += file.size;
+        
+        // Parse the range to count actual pages targeted
+        const parsedIndices = parsePageRange(file.range, file.pageCount);
+        totalPages += parsedIndices.length;
+      });
+
+      // Update Labels
+      filesCountLabel.textContent = `${filesCount} document${filesCount !== 1 ? 's' : ''} queued`;
+      totalSizeLabel.textContent = formatBytes(totalSizeBytes);
+      
+      // Update Dashboard Grid values
+      dbCount.textContent = formatIndex(filesCount);
+      dbPages.textContent = totalPages > 0 ? formatIndex(totalPages) : '00';
+      dbSize.textContent = formatBytes(totalSizeBytes);
+
+      // Disable/Enable main operations buttons
+      btnStitch.disabled = filesCount === 0;
+      btnClear.disabled = filesCount === 0;
+    }
+
+    // Clear Workspace
+    btnClear.addEventListener('click', () => {
+      files = [];
+      renderFilesList();
+      updateDashboard();
+      outputFilename.value = 'stitched_document.pdf';
+    });
+
+    // Toast Notification utility
+    let toastTimeout;
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-message');
+      
+      toastMsg.textContent = message;
+      toast.classList.add('active');
+      
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('active');
+      }, 4000);
+    }
+
+    // Modal Close
+    modalClose.addEventListener('click', () => {
+      progressModal.classList.remove('active');
+    });
+
+    // Helper: Parse page ranges (1-indexed input ranges into 0-indexed page list)
+    function parsePageRange(rangeStr, maxPages) {
+      if (!rangeStr || rangeStr.trim().toLowerCase() === 'all') {
+        return Array.from({ length: maxPages }, (_, i) => i);
+      }
+      
+      const indices = new Set();
+      const parts = rangeStr.split(',');
+      
+      for (let part of parts) {
+        part = part.trim();
+        if (part.includes('-')) {
+          const bounds = part.split('-');
+          const startStr = bounds[0].trim();
+          const endStr = bounds[1].trim();
+          
+          let start = startStr !== '' ? parseInt(startStr, 10) : 1;
+          let end = endStr !== '' ? parseInt(endStr, 10) : maxPages;
+          
+          if (isNaN(start)) start = 1;
+          if (isNaN(end)) end = maxPages;
+          
+          start = Math.max(1, Math.min(start, maxPages));
+          end = Math.max(1, Math.min(end, maxPages));
+          
+          if (start <= end) {
+            for (let i = start; i <= end; i++) {
+              indices.add(i - 1);
+            }
+          } else {
+            for (let i = start; i >= end; i--) {
+              indices.add(i - 1);
+            }
+          }
+        } else {
+          const val = parseInt(part, 10);
+          if (!isNaN(val)) {
+            const idx = val - 1;
+            if (idx >= 0 && idx < maxPages) {
+              indices.add(idx);
+            }
+          }
+        }
+      }
+      return Array.from(indices);
+    }
+
+    // Stitch/Merge PDF Operation
+    btnStitch.addEventListener('click', async () => {
+      if (files.length === 0) return;
+
+      // 1. Show Modal Spinner
+      progressModal.classList.add('active');
+      modalClose.style.display = 'none';
+      updateProgressModalState('loading', 'Merging PDFs.', 'Reading page inputs...', 10);
+
+      try {
+        // 2. Initialize PDFLib merged document
+        const mergedPdf = await PDFLib.PDFDocument.create();
+        const totalFiles = files.length;
+        
+        for (let i = 0; i < totalFiles; i++) {
+          const file = files[i];
+          const progressPercent = Math.round(10 + (i / totalFiles) * 70);
+          updateProgressModalState(
+            'loading', 
+            'Merging PDFs.', 
+            `Stitching ${formatIndex(i + 1)} / ${formatIndex(totalFiles)}: ${file.name}`, 
+            progressPercent
+          );
+
+          // Let UI refresh
+          await new Promise(r => setTimeout(r, 80));
+
+          // Load target file arraybuffer into pdf-lib
+          const donorPdf = await PDFLib.PDFDocument.load(file.arrayBuffer, { ignoreEncryption: true });
+          const maxPages = donorPdf.getPageCount();
+
+          // Calculate which pages to extract
+          const targetIndices = parsePageRange(file.range, maxPages);
+
+          if (targetIndices.length > 0) {
+            const copiedPages = await mergedPdf.copyPages(donorPdf, targetIndices);
+            copiedPages.forEach(page => mergedPdf.addPage(page));
+          }
+        }
+
+        // 3. Finalize and Save
+        updateProgressModalState('loading', 'Compiling PDF.', 'Packing final document bytes...', 90);
+        await new Promise(r => setTimeout(r, 100));
+
+        const mergedPdfBytes = await mergedPdf.save();
+        
+        updateProgressModalState('loading', 'Saving file.', 'Triggering browser download...', 98);
+        await new Promise(r => setTimeout(r, 100));
+
+        // Create Blob and trigger download
+        const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+        const downloadUrl = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        
+        let filename = outputFilename.value.trim();
+        if (!filename) {
+          filename = 'stitched_document.pdf';
+        } else if (!filename.toLowerCase().endsWith('.pdf')) {
+          filename += '.pdf';
+        }
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // Revoke after a brief moment to free memory
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
+
+        // Success state
+        updateProgressModalState('success', 'Shipped.', 'Your merged PDF has been saved to your downloads folder.', 100);
+        modalClose.style.display = 'inline-flex';
+
+      } catch (err) {
+        console.error('Error during merge process:', err);
+        updateProgressModalState('error', 'Merge failed.', `Error: ${err.message || 'Unknown merging error occurred.'}`, 100);
+        modalClose.style.display = 'inline-flex';
+      }
+    });
+
+    // Helper: Update Modal Contents Dynamically
+    function updateProgressModalState(state, title, statusText, progressPercent) {
+      modalTitle.textContent = title;
+      modalStatus.textContent = statusText;
+      modalProgress.style.width = `${progressPercent}%`;
+
+      let iconHtml = '';
+      if (state === 'loading') {
+        iconHtml = `<i data-lucide="loader-2" class="modal-loading-icon" style="width: 20px; height: 20px;"></i>`;
+      } else if (state === 'success') {
+        iconHtml = `<span class="sg-tag sg-tag--accent"><span class="sg-tag__dot"></span>Done</span>`;
+      } else if (state === 'error') {
+        iconHtml = `<span class="sg-tag sg-tag--danger">Error</span>`;
+      }
+      
+      modalIconContainer.innerHTML = iconHtml;
+      refreshIcons();
+    }
+
+    // Initialize dashboard state with zero-padded indices
+    updateDashboard();
+  </script>
+</body>
+</html>
